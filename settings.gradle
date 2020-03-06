@@ -1,0 +1,2 @@
+include ':maps-java'
+rootProject.name='maps-android-sample'
