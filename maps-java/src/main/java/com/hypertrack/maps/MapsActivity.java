@@ -1,15 +1,18 @@
 package com.hypertrack.maps;
 
 import android.content.BroadcastReceiver;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.location.LocationListener;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.v4.app.FragmentActivity;
+import android.view.View;
 import android.widget.TextView;
-
-import androidx.annotation.NonNull;
-import androidx.fragment.app.FragmentActivity;
+import android.widget.Toast;
 
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -32,13 +35,17 @@ import java.util.Map;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, DeviceUpdatesHandler {
 
-    private static final String HYPERTRACK_PUB_KEY = "YOUR_KEY_HERE";
+    private static final String HYPERTRACK_PUB_KEY = "5TEemY4gE1rMucM-TpSV8-GT7Ia6gGm9yuSr3ljp9_qF_9jgs2IjHD25rTQrIw6qwWn1YfAsgcLhIrpyrKrs8A";
 
-    private TextView trackingStatus;
+    private String viewsDeviceID = "79E48CE0-35D8-4844-8D7B-A173D3F1328B";
 
     private HyperTrack hyperTrack;
     private HyperTrackViews hyperTrackViews;
     private HyperTrackMap hyperTrackMap;
+
+    private TextView trackingStatus;
+    private TextView trackingDeviceId;
+    private TextView viewingDeviceId;
 
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
@@ -64,11 +71,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
-
-        trackingStatus = findViewById(R.id.tracking_status);
+        initUi();
 
         hyperTrack = HyperTrack.getInstance(this, HYPERTRACK_PUB_KEY);
         hyperTrackViews = HyperTrackViews.getInstance(this, HYPERTRACK_PUB_KEY);
+
+        if (viewsDeviceID.isEmpty()) viewsDeviceID = hyperTrack.getDeviceID();
 
         hyperTrack.requestPermissionsIfNecessary();
         if (hyperTrack.isRunning()) {
@@ -87,8 +95,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     /**
      * Manipulates the map once available.
      * This callback is triggered when the map is ready to be used.
-     * This is where we can add markers or lines, add listeners or move the camera. In this case,
-     * we just add a marker near Sydney, Australia.
+     * This is where we can add markers or lines, add listeners or move the camera.
      * If Google Play services is not installed on the device, the user will be prompted to install
      * it inside the SupportMapFragment. This method will only be triggered once the user has
      * installed Google Play services and returned to the app.
@@ -96,33 +103,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapReady(GoogleMap googleMap) {
 
+        hyperTrackViews.subscribeToDeviceUpdates(viewsDeviceID, this);
+
         GoogleMapConfig mapConfig = GoogleMapConfig.newBuilder(this).build();
         GoogleMapAdapter mapAdapter = new GoogleMapAdapter(googleMap, mapConfig);
         hyperTrackMap = HyperTrackMap.getInstance(this, mapAdapter)
                 .bind(new GpsLocationProvider(this))
-                .bind(hyperTrackViews, hyperTrack.getDeviceID());
+                .bind(hyperTrackViews, viewsDeviceID);
+        hyperTrackMap.moveToMyLocation();
 
-        hyperTrackViews.subscribeToDeviceUpdates(hyperTrack.getDeviceID(), this);
-
-        hyperTrackMap.setLocationUpdatesListener(new LocationListener() {
-            @Override
-            public void onLocationChanged(android.location.Location location) {
-                hyperTrackMap.moveToMyLocation();
-                hyperTrackMap.setLocationUpdatesListener(null);
-            }
-
-            @Override
-            public void onStatusChanged(String s, int i, Bundle bundle) {
-            }
-
-            @Override
-            public void onProviderEnabled(String s) {
-            }
-
-            @Override
-            public void onProviderDisabled(String s) {
-            }
-        });
+        trackingDeviceId.setText(hyperTrack.getDeviceID());
+        viewingDeviceId.setText(viewsDeviceID);
     }
 
     private void onTrackingStarted() {
@@ -173,6 +164,24 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public void onCompleted(@NonNull String s) {
+    }
+
+    private void initUi() {
+        trackingStatus = findViewById(R.id.tracking_status);
+        trackingDeviceId = findViewById(R.id.tracking_device_id);
+        viewingDeviceId = findViewById(R.id.viewing_device_id);
+
+        View.OnClickListener copyToClipboard = new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                ClipData clip = ClipData.newPlainText("Copied", ((TextView) view).getText());
+                clipboard.setPrimaryClip(clip);
+                Toast.makeText(MapsActivity.this, clip.getDescription().getLabel(), Toast.LENGTH_SHORT).show();
+            }
+        };
+        trackingDeviceId.setOnClickListener(copyToClipboard);
+        viewingDeviceId.setOnClickListener(copyToClipboard);
     }
 
     @Override
