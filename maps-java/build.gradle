@@ -31,7 +31,7 @@ dependencies {
 
     implementation 'com.hypertrack:hypertrack:4.2.0-SNAPSHOT'
     implementation 'com.hypertrack:hypertrack-views:0.8.5'
-    implementation 'com.hypertrack:maps-google:0.2.0-SNAPSHOT'
+    implementation 'com.hypertrack:maps-google:0.1.6'
 
     testImplementation 'junit:junit:4.12'
 }
