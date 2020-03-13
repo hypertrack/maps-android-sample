@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.hypertrack.maps">
 
     <!--
@@ -28,7 +29,8 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="@string/google_maps_key" />
-
+        <service android:name="com.hypertrack.sdk.service.HyperTrackSDKService"
+            tools:remove="android:foregroundServiceType" />
         <activity
             android:name=".MapsActivity"
             android:label="@string/title_activity_maps">
