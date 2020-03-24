@@ -17,18 +17,24 @@ Clone the app and import the source of either `maps-java` folder using your favo
 
 ### Set your Publishable Key
 
-Open the Quickstart project inside the workspace and set your Publishable Key (from [Setup page](https://dashboard.hypertrack.com/setup)) inside the placeholder
+Open the maps-android-sample project inside the workspace and set your Publishable Key (from [Setup page](https://dashboard.hypertrack.com/setup)) inside the placeholder
 in the [`MainActivity.java`](https://github.com/hypertrack/maps-android-sample/blob/master/maps-java/src/main/java/com/hypertrack/maps/MapsActivity.java#L35) file.
 
+## Usage
+### Initialize HyperTrack
+```
+hyperTrack = HyperTrack.getInstance(context, state.getHyperTrackPubKey());
+hyperTrackViews = HyperTrackViews.getInstance(context, state.getHyperTrackPubKey());
+```
 ### Customize sample
-You can do customizations with `GoogleMapConfig` you need for google maps. 
+You can do customizations you need with `GoogleMapConfig` for map's objects. 
 ```
     GoogleMapConfig.Builder mapConfigBuilder = GoogleMapConfig.newBuilder(this);
 
     GoogleMapAdapter mapAdapter = new GoogleMapAdapter(googleMap, mapConfigBuilder.build());
     hyperTrackMap = HyperTrackMap.getInstance(this, mapAdapter)
 ```
-Or you can customize with simple style
+Or you can easily customize map's objects with style.
 ```
     <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
         ...
@@ -45,6 +51,42 @@ Or you can customize with simple style
         <item name="tripCompletedRouteColor">@android:color/black</item>
     </style>
 ```
+
+### Advanced usage
+`GoogleMapAdapter` provides two ways for trips filtering. First is to subscribe to a specific trip.
+```
+GoogleMapAdapter mapAdapter = new GoogleMapAdapter(googleMap, mapConfigBuilder.build());
+hyperTrackMap.bind(hyperTrackViews, hyperTrack.getDeviceID())
+                .subscribeTrip(tripId);
+```
+Second is to subscribe to all trips updates but to filter them via `hyperTrackMap.addTripFilter(Predicate<Trip>)`.
+```
+hyperTrackMap.bind(hyperTrackViews, hyperTrack.getDeviceID())
+mapAdapter.addTripFilter(new Predicate<Trip>() {
+                @Override
+                public boolean apply(Trip trip) {
+                    return trip.getStatus().equals("active"); //It will be shown only active trips on map
+                }
+            });
+```
+Also you can manage trips on the google map with `GoogleMapAdapter`.
+
+to add trip on the map.
+```
+MapTrip mapTrip = mapAdapter.addTrip(Trip);
+```
+to update trip with `MapTrip` instance.
+```
+mapTrip.update(Trip);
+```
+to remove the trip from the map.
+```
+mapTrip.remove();
+```
+
+### Test sample app
+To create trip you need to open [Home page](https://dashboard.hypertrack.com/home), then select your device and create trip for it.
+After that you will see this trip in the sample app.
 
 ## Dashboard
 

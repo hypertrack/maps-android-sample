@@ -70,7 +70,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         trackingStatus = findViewById(R.id.tracking_status);
 
-        hyperTrack = HyperTrack.getInstance(this, HYPERTRACK_PUB_KEY);
+        hyperTrack = HyperTrack.getInstance(this, HYPERTRACK_PUB_KEY)
+                    .setDeviceName("Maps-sample device");
+
         hyperTrackViews = HyperTrackViews.getInstance(this, HYPERTRACK_PUB_KEY);
 
         hyperTrack.requestPermissionsIfNecessary();
