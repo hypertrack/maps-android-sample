@@ -4,8 +4,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.location.LocationListener;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, DeviceUpdatesHandler {
+    private static final String TAG = "MapsActivity";
 
     private static final String HYPERTRACK_PUB_KEY = "YOUR_KEY_HERE";
 
@@ -45,6 +46,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         public void onReceive(Context context, Intent intent) {
 
             int code = intent.getIntExtra(TrackingStateObserver.EXTRA_KEY_CODE_, 0);
+            String message = intent.getStringExtra(TrackingStateObserver.EXTRA_KEY_MESSAGE_);
             switch (code) {
                 case TrackingStateObserver.EXTRA_EVENT_CODE_START:
                     onTrackingStarted();
@@ -53,6 +55,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     break;
                 default:
                     // Some critical error in SDK.
+                    Log.e(TAG, "code: " + code + " | " + message);
                     break;
             }
         }
@@ -67,7 +70,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         trackingStatus = findViewById(R.id.tracking_status);
 
-        hyperTrack = HyperTrack.getInstance(this, HYPERTRACK_PUB_KEY);
+        hyperTrack = HyperTrack.getInstance(this, HYPERTRACK_PUB_KEY)
+                    .setDeviceName("Maps-sample device");
+
         hyperTrackViews = HyperTrackViews.getInstance(this, HYPERTRACK_PUB_KEY);
 
         hyperTrack.requestPermissionsIfNecessary();
@@ -77,12 +82,28 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             onTrackingStopped();
         }
         registerReceiver(broadcastReceiver, new IntentFilter(TrackingStateObserver.ACTION_TRACKING_STATE));
+    }
 
+    // This part is important for saving the device’s battery.
+    // Otherwise HyperTrackViews and HyperTrackMap will stay connected to server and receive updates through websockets,
+    // what prevents the system from disabling wifi or mobile network.
+    @Override
+    protected void onResume() {
+        super.onResume();
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+        hyperTrackViews.subscribeToDeviceUpdates(hyperTrack.getDeviceID(), this);
     }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        hyperTrackMap.unbindHyperTrackViews();
+        hyperTrackViews.unsubscribeFromDeviceUpdates(this);
+    }
+    //
 
     /**
      * Manipulates the map once available.
@@ -96,33 +117,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapReady(GoogleMap googleMap) {
 
-        GoogleMapConfig mapConfig = GoogleMapConfig.newBuilder(this).build();
-        GoogleMapAdapter mapAdapter = new GoogleMapAdapter(googleMap, mapConfig);
-        hyperTrackMap = HyperTrackMap.getInstance(this, mapAdapter)
-                .bind(new GpsLocationProvider(this))
-                .bind(hyperTrackViews, hyperTrack.getDeviceID());
+        if (hyperTrackMap == null) {
+            GoogleMapConfig.Builder mapConfigBuilder = GoogleMapConfig.newBuilder(this);
+            GoogleMapAdapter mapAdapter = new GoogleMapAdapter(googleMap, mapConfigBuilder.build());
+            hyperTrackMap = HyperTrackMap.getInstance(this, mapAdapter)
+                    .bind(new GpsLocationProvider(this));
 
-        hyperTrackViews.subscribeToDeviceUpdates(hyperTrack.getDeviceID(), this);
+            hyperTrackMap.moveToMyLocation();
+        }
 
-        hyperTrackMap.setLocationUpdatesListener(new LocationListener() {
-            @Override
-            public void onLocationChanged(android.location.Location location) {
-                hyperTrackMap.moveToMyLocation();
-                hyperTrackMap.setLocationUpdatesListener(null);
-            }
-
-            @Override
-            public void onStatusChanged(String s, int i, Bundle bundle) {
-            }
-
-            @Override
-            public void onProviderEnabled(String s) {
-            }
-
-            @Override
-            public void onProviderDisabled(String s) {
-            }
-        });
+        hyperTrackMap.bind(hyperTrackViews, hyperTrack.getDeviceID());
     }
 
     private void onTrackingStarted() {
@@ -169,6 +173,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public void onError(@NonNull Exception e, @NonNull String s) {
+        Log.e(TAG, s, e);
     }
 
     @Override
